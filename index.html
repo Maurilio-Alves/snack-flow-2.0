@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Bilu Burger - Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d0d0d; color: #e5e5e5; font-family: sans-serif; padding-bottom: 250px; }
+        .item-card { background-color: #181818; border-radius: 12px; padding: 14px; margin-bottom: 8px; border: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .cat-header { color: #fbbf24; border-left: 4px solid #fbbf24; padding-left: 12px; margin: 24px 0 12px 0; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: #1a1a1a; width: 95%; max-height: 85%; border-radius: 20px; padding: 20px; overflow-y: auto; border: 1px solid #fbbf24; }
+        .cart-fixed { background-color: #000; border-top: 2px solid #fbbf24; position: fixed; bottom: 0; left: 0; width: 100%; padding: 16px; z-index: 50; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); }
+        input, select { background-color: #222; color: #fff; border: 1px solid #333; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 6px; }
+        .btn-green { background-color: #16a34a; color: white; font-weight: 900; }
+    </style>
+</head>
+<body>
+
+    <header class="text-center py-6">
+        <h1 class="text-4xl font-black text-yellow-500">BILU BURGER</h1>
+        <p class="text-xs text-gray-500 uppercase tracking-widest">Onde o bicho pega! 👊⚓</p>
+    </header>
+
+    <main class="px-4" id="menu-principal"></main>
+
+    <div id="modal-adicionais" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-titulo" class="text-2xl font-bold text-yellow-500 mb-2"></h2>
+            <p class="text-gray-400 text-sm italic mb-4">Escolha seus adicionais:</p>
+            <div id="lista-opcionais" class="space-y-2"></div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="fecharModal()" class="flex-1 bg-zinc-800 py-4 rounded-xl font-bold">CANCELAR</button>
+                <button onclick="confirmarItem()" class="flex-1 btn-green py-4 rounded-xl">ADICIONAR ✅</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="cart-fixed">
+        <input type="text" id="nome_cli" placeholder="Seu Nome">
+        <input type="text" id="end_cli" placeholder="Endereço Completo">
+        
+        <select id="taxa_entrega" onchange="atualizarTotalFinal()">
+            <option value="0">Carregando bairros...</option>
+        </select>
+        
+        <div class="flex justify-between items-center mt-2">
+            <div class="text-xl font-bold">TOTAL: <span id="val_total" class="text-green-500">R$ 0,00</span></div>
+            <button id="btn-finalizar" onclick="finalizarPedido()" class="bg-green-600 px-8 py-3 rounded-xl font-black text-white active:scale-95 transition-all">PEDIR NO ZAP 🚀</button>
+        </div>
+    </footer>
+
+    <script>
+        const URL_FIREBASE_PEDIDOS = "https://biluburgeronline-default-rtdb.firebaseio.com/pedidos.json";
+        const URL_FIREBASE_FRETES = "https://biluburgeronline-default-rtdb.firebaseio.com/config_fretes.json";
+
+        const dados = {
+            "Hamburguer Artesanal": [["Bilu Burguer", 37.5], ["Vegetariano", 30], ["X-Burguer Art", 27.5], ["X-Salada Art", 30.5], ["X-Bacon Art", 35.5], ["X-Milho Art", 30.5], ["X-Egg Art", 30.5], ["Cala Burguer Art", 35], ["Fran Burguer Art", 35], ["Americano Art", 35]],
+            "Hamburguer Tradicional": [["X-Burguer Trad", 22], ["X-Salada Trad", 24], ["X-Bacon Trad", 31.5], ["X-Milho Trad", 24], ["X-Egg Trad", 24], ["Cala Burguer Trad", 29], ["Fran Burguer Trad", 29], ["Americano Trad", 30]],
+            "Lanches Variados": [["Carnão", 33], ["Prensão", 27.5], ["X-Calabresa", 29.5], ["Cala Bacon", 31.5], ["X-Frango", 29], ["Cala Frango", 31.5], ["Fran Bacon", 31.5], ["Cachorro Quente", 15], ["Cachorro Duplo", 17], ["Cachorro Triplo C/ Queijo", 25]],
+            "Bebidas": [["Refrigerante Lata", 6], ["Coca 1L", 11], ["Sucos Naturais", 6], ["Água sem gás", 3], ["Água com Gás", 4], ["Heineken Lata", 8.5]]
+        };
+
+        const opcionais = [
+            ["Artesanal 150G", 11], ["Vegetariano (Adic)", 7], ["Tradicional", 7], ["Bacon", 8], ["Presunto", 3], ["Mussarela", 8], ["Calabresa", 8], ["Frango Desfiado", 8], ["Salsicha", 2], ["Purê", 3], ["Milho", 4], ["Batata Palha", 3], ["Catupiry Original", 8], ["Cheddar Catupiry", 7], ["Molho BBQ", 2.5], ["Alface", 2], ["Ovo", 3]
+        ];
+
+        let itemAtual = null; let carrinho = []; let somaLanches = 0;
+
+        function montar() {
+            let h = "";
+            for (let c in dados) {
+                h += `<h2 class="cat-header">${c}</h2>`;
+                dados[c].forEach(i => h += `<div class="item-card" onclick="abrirModal('${i[0]}', ${i[1]})"><div><h3 class="font-bold text-lg">${i[0]}</h3><p class="text-green-500 font-bold">R$ ${i[1].toFixed(2).replace('.',',')}</p></div><button class="bg-green-600 w-10 h-10 rounded-lg">+</button></div>`);
+            }
+            document.getElementById('menu-principal').innerHTML = h;
+        }
+
+        async function carregarFretesReais() {
+    try {
+        const res = await fetch(URL_FIREBASE_FRETES);
+        const bairros = await res.json();
+        
+        let html = '<option value="0">Escolha a Entrega / Retirada</option>';
+        html += '<option value="0">Vou Retirar no Balcão (Grátis)</option>';
+        
+        if (bairros) {
+            Object.keys(bairros).forEach(id => {
+                let item = bairros[id];
+                let nome = item.bairro || id;
+                
+                // Tenta pegar o valor de várias formas (valor, preco, ou o próprio item)
+                let valorRaw = item.valor || item.preco || item;
+                let valor = parseFloat(valorRaw) || 0;
+
+                html += `<option value="${valor}">${nome} (R$ ${valor.toFixed(2).replace('.',',')})</option>`;
+            });
+        }
+        document.getElementById('taxa_entrega').innerHTML = html;
+    } catch (e) {
+        document.getElementById('taxa_entrega').innerHTML = '<option value="0">Vou Retirar (Grátis)</option>';
+    }
+}
+
+        function abrirModal(n, p) {
+            itemAtual = { n, p, ex: [] };
+            if(["Refrigerante", "Coca", "Água", "Sucos", "Heineken"].some(beb => n.includes(beb))) { confirmarItem(); return; }
+            document.getElementById('modal-titulo').innerText = n;
+            let h = "";
+            opcionais.forEach(o => h += `<label class="flex justify-between items-center bg-zinc-800 p-4 rounded-xl border border-zinc-700 mb-2"><span>${o[0]} (+R$${o[1].toFixed(2).replace('.',',')})</span><input type="checkbox" class="w-6 h-6 accent-green-600" onchange="toggle('${o[0]}', ${o[1]}, this.checked)"></label>`);
+            document.getElementById('lista-opcionais').innerHTML = h;
+            document.getElementById('modal-adicionais').style.display = 'flex';
+        }
+
+        function toggle(n, p, c) {
+            if(c) itemAtual.ex.push({n, p});
+            else itemAtual.ex = itemAtual.ex.filter(e => e.n !== n);
+        }
+
+        function fecharModal() { document.getElementById('modal-adicionais').style.display = 'none'; }
+
+        function atualizarTotalFinal() {
+            const taxa = parseFloat(document.getElementById('taxa_entrega').value);
+            document.getElementById('val_total').innerText = `R$ ${(somaLanches + taxa).toFixed(2).replace('.',',')}`;
+        }
+
+        function confirmarItem() {
+            let valorItem = itemAtual.p;
+            let exStr = itemAtual.ex.map(e => { valorItem += e.p; return e.n; }).join(', ');
+            carrinho.push({ res: `${itemAtual.n}${exStr ? ' (C/: ' + exStr + ')' : ''}`, v: valorItem });
+            somaLanches += valorItem;
+            atualizarTotalFinal();
+            fecharModal();
+        }
+
+        async function finalizarPedido() {
+            const n = document.getElementById('nome_cli').value;
+            const e = document.getElementById('end_cli').value;
+            const selectTaxa = document.getElementById('taxa_entrega');
+            const taxaVal = parseFloat(selectTaxa.value);
+            const taxaNome = selectTaxa.options[selectTaxa.selectedIndex].text;
+
+            if(!n || !e || carrinho.length === 0) { alert("Preencha nome, endereço e escolha os itens!"); return; }
+            
+            const totalFinal = somaLanches + taxaVal;
+            const itensFormatados = carrinho.map(i => i.res).join(', ');
+
+            const btn = document.getElementById('btn-finalizar');
+            btn.innerText = "ENVIANDO..."; btn.disabled = true;
+
+            const pedidoNuvem = {
+                cliente: n,
+                lanche: itensFormatados,
+                endereco: e,
+                bairro: taxaNome.split(' (')[0],
+                total: totalFinal,
+                taxaEntrega: taxaVal,
+                status: "PREPARANDO",
+                hora: new Date().toLocaleString()
+            };
+
+            try {
+                await fetch(URL_FIREBASE_PEDIDOS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pedidoNuvem)
+                });
+            } catch (err) { console.error("Erro Firebase:", err); }
+
+            const fone = "5511999428666"; 
+            let msg = `*🍔 NOVO PEDIDO - BILU BURGER*%0A%0A*Cliente:* ${n}%0A*End:* ${e}%0A%0A*ITENS:*%0A- ${carrinho.map(i => i.res).join('%0A- ')}%0A%0A*Entrega:* ${taxaNome}%0A*TOTAL FINAL: R$ ${totalFinal.toFixed(2).replace('.',',')}*`;
+            
+            window.open(`https://wa.me/${fone}?text=${msg}`);
+            
+            btn.innerText = "PEDIR NO ZAP 🚀"; btn.disabled = false;
+        }
+
+        montar();
+        carregarFretesReais();
+    </script>
+</body>
+</html>
