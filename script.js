@@ -1,12 +1,11 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyAboM2BYJNZXZVnqjSiWLEQZHUoREorcF0",
-  authDomain: "biluburgeronline.firebaseapp.com",
-  databaseURL: "https://biluburgeronline-default-rtdb.firebaseio.com",
-  projectId: "biluburgeronline",
-  storageBucket: "biluburgeronline.firebasestorage.app",
-  messagingSenderId: "944268946417",
-  appId: "1:944268946417:web:6c520d12b24857d7ebb250",
-  measurementId: "G-7J4Q5C9LE7"
+  apiKey: "SUA_API_KEY_AQUI",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  databaseURL: "https://SEU_PROJETO.firebaseio.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "ID_AQUI",
+  appId: "APP_ID_AQUI"
 };
 
 // Inicializa o Firebase
