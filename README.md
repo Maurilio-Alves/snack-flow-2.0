@@ -82,4 +82,6 @@ Para que o sistema funcione, você precisa configurar o seu próprio projeto no 
 2. Crie um novo projeto e ative o **Realtime Database** e o **Hosting**.
 3. Gere uma nova chave privada em: `Configurações do Projeto` > `Contas de Serviço` > `Gerar nova chave privada`.
 4. Salve o arquivo JSON baixado na raiz do projeto com o nome de `firebase_config.json`.
+
 5. **Atenção:** Nunca compartilhe ou suba este arquivo JSON para repositórios públicos, pois ele contém suas credenciais de acesso.
+6. ![WhatsApp Image 2026-02-09 at 11 06 19 PM](https://github.com/user-attachments/assets/7ec7db5d-f531-4fd1-b2ea-4597caf593a0)
